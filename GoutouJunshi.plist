@@ -1,5 +1,8 @@
 {
     Filter = {
+        Executables = (
+            "WeChat"
+        );
         Bundles = (
             "com.tencent.xin"
         );
