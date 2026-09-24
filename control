@@ -1,0 +1,9 @@
+Package: com.fuyan.goutoujunshi
+Name: GoutouJunshi
+Version: 0.1.0
+Architecture: iphoneos-arm64
+Description: GoutouJunshi assistant for WeChat
+Maintainer: fuyan8910
+Author: fuyan8910
+Section: Tweaks
+Depends: mobilesubstrate
