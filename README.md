@@ -1,0 +1,70 @@
+# 狗头军师 / GoutouJunshi
+
+面向微信 iOS 8.0.75 的手动沟通分析插件。当前代码是第一版实现，**新版尚未经过 Theos 编译及真机验收，私有消息列表适配仍待验证**。原仓库的注入、构建成功记录来自已有基线，不代表本次新增功能已经真机验证。
+
+## 使用
+
+1. 微信启动约 5 秒后出现可拖动的「狗头军师」按钮。进入具体聊天后点击。
+2. 在设置中输入 DeepSeek API Key；需要时修改模型名称（默认 `deepseek-chat`，以账户实际可用模型为准）和聊天条数（5～50，默认 20）。
+3. 查看识别到的联系人、读取范围和「实际发送内容」。确认分析后才会联网。读取失败时不发起请求。
+4. 展示关系状态、可能意图、局面、风险、策略及 3～5 条不同风格回复。点击回复只复制到本机剪贴板，5 分钟后过期；用户自行返回微信粘贴发送。
+5. 长期记忆默认关闭。开启后可编辑关系、人物、事件、明确记住的信息和精简摘要。AI 摘要只在点击保存时写入；不会自动将推测变为关系事实。
+
+## 模块
+
+| 文件 | 职责 |
+| --- | --- |
+| `src/Tweak.xm` | 保留延迟、主线程 `%ctor` 入口，将测试弹窗换为管理器启动 |
+| `src/GJManager.h/.m` | 公开 UIKit 窗口查找、可拖动入口、页面展示 |
+| `src/GJWeChatAdapter.h/.m` | 唯一微信私有访问边界、当前会话识别、有界消息转换、本机结构诊断 |
+| `src/GJModels.h/.m` | 独立 GJMessage/GJChatContext 数据模型、文本截断及错误 |
+| `src/GJPreferences.h/.m` | 独立偏好域、Keychain API Key 存取 |
+| `src/GJDeepSeekClient.h/.m` | HTTPS 请求、取消、超时、限流等错误处理、响应大小限制 |
+| `src/GJPromptBuilder.h/.m` | 数据提示词、匿名发言者标签、JSON 结果验证 |
+| `src/GJMemoryStore.h/.m` | 按账号和联系人隔离的受保护本地 JSON 文件 |
+| `src/GJAnalysisViewController.h/.m` | 预览、手动确认、请求状态、分析结果、复制及手动保存摘要 |
+| `src/GJSettingsViewController.h/.m` | Key、模型、条数、记忆开关/编辑/清除 |
+| `src/GJUI.h` | 公共提示及只读文本展示 |
+
+## 微信适配边界
+
+- 不 hook 假定存在的旧版聊天控制器，不声明或链接 `CMessageWrap`。AI/UI/Memory 仅使用统一模型。
+- 从当前可见控制器及有限层级父控制器，尝试 `getChatUsername` 或联系人字段。通过动态 `MMServiceCenter/defaultCenter/getService:` 获取 `CContactMgr`，尝试 `getSelfContact`、`getContact:`。这些类、方法、字段仍需真机确认。
+- 对私有方法检查 `respondsToSelector:`、参数个数、对象/类参数与对象返回 ABI；用 `NSInvocation` 调用。对象字段检查 ivar 类型，数值字段使用有异常保护的限定 KVC。找不到内容则显示错误。异常保护不能保证任意微信内部方法自身永不发生底层崩溃。
+- 首先检查候选消息数组字段，再有界枚举当前控制器名称包含 `msg/message` 的对象 ivar；最多 16 个候选，每个只检查末尾最多 200 条。仅接受数组，展开 `m_msgWrap` 后校验当前账号/会话归属、类型和时间。候选字段不是已经证实的 8.0.75 接口。
+- 按时间稳定排序，取设置条数，单条上限 1000 UTF-16 单元，总文本上限 12000；不切断 Unicode 组合字符。相同秒消息保留读取数组中的顺序，不宣称绝对原始顺序。
+- **只读取页面已加载记录，可能是向上翻页后的旧记录，不能保证数据库最新 N 条。** 界面明确提示这一限制；不会伪造历史，不调用来源未知的 `getMessageFrom:maxCount:`，也不扫描数据库。
+- 群聊仅在会话归属字段符合校验时处理，尝试 `m_nsRealChatUsr` 区分参与者；参与者缺失时无法可靠区分发言人，必须核对预览，群聊行为待真机验收。
+- 图片、语音、视频、表情、分享等只转换为占位文字，不上传媒体、附件、XML 或整个数据库。
+- 本机适配诊断只显示控制器类、候选字段名及服务类存在性，不打印数据、Key 或网络日志，不上传诊断。
+
+## 隐私与安全存储
+
+- 无自动发送、自动回复或消息发送接口调用。网络入口只在用户确认分析后执行。
+- Key 使用 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`，仅在钥匙串保存；失败提示系统错误码，不回退到明文。是否可访问钥匙串取决于注入/重签名环境的 entitlement，须真机确认。
+- 记忆文件位于微信沙盒 `Library/Application Support/GoutouJunshi/Memory`。文件名由账号和联系人二元组的 SHA-256 得出，防路径注入、跨联系人和跨账号串用。哈希文件名不是内容加密；内容由 iOS `NSFileProtectionComplete` 保护，并将目录排除系统备份。同一宿主进程的其他代码不在隔离边界内。
+- 每个记忆字段最多 1000 UTF-16 单元。关闭记忆后不读取、上传、写入；已有文件保留至用户清除。清除联系人、全部清除、开关变化及手动编辑都会使旧分析的写回资格失效。
+- 发往固定 `https://api.deepseek.com/chat/completions` 的内容为受限上下文与启用时的精简记忆。用户 ID 不作为单独字段发出，发言者改用「我/对方 N」；**原聊天正文、用户记忆可能仍含姓名、号码等个人信息，预览并不等于自动脱敏**。
+- 使用 ephemeral URLSession，不缓存、不持久化 Cookie、拒绝重定向、响应最多 256 KiB、请求/资源超时 60/90 秒，无自动重试。取消无法撤回服务端已收到的数据。
+- JSON 输出按 [DeepSeek 官方 JSON Output 文档](https://api-docs.deepseek.com/guides/json_mode/)构造；客户端仍验证结果类型、必要字段、回复数量与长度，并拒绝截断响应。
+
+## 构建与检查
+
+`Makefile` 明确列出 10 个 `.m/.xm` 编译单元，保持 `arm64`、`iphone:clang:latest:15.0`、ARC 和安装进程；增加 Security、QuartzCore，保留 UIKit、Foundation。`control`、`GoutouJunshi.plist`、`.github/workflows/build.yml` 未改动。
+
+现有 Actions 继续在 macOS 安装 Theos 后执行 `make clean`、`make package FINALPACKAGE=1` 并上传 `packages/*.deb`。本次没有提交、push 或触发远程构建。Windows 当前环境无 Theos/Clang/iOS SDK，无法在本机验证链接、打包或真实 SDK 警告。
+
+可运行 `python scripts/check_source.py` 检查源文件列表、依赖和禁止的跨模块访问。安装 `tree-sitter`、`tree-sitter-objc` 后还会解析 Objective-C 语法；`%ctor` 仅在内存中替换为普通构造函数以检查主体。**语法解析不等于 Clang/Logos 编译，不验证 SDK、ABI 或真实微信行为。**
+
+本次已执行静态边界检查、所有 20 个源码/头文件的语法解析和 `git diff --check`。人工复核 ARC/CF 桥接、网络 delegate 生命周期、取消旧回调、私有调用类型、nil 路径及 iOS 15 公共 API 使用；没有禁用 `-Werror` 或 deprecated 警告。
+
+## 真机验收清单
+
+- Actions 新版 `.deb` 编译/链接/打包成功，启动微信无闪退且按钮出现，页面关闭/拖动/旋转正常。
+- 普通私聊、群聊、空聊天、非聊天页面、未加载历史、混合文本媒体；失败时仅显示错误，记录本机结构诊断用于补充适配器。
+- 当前联系人、收发方向、消息时间和读取范围与屏幕一致；特别检查群聊参与者和历史翻页。
+- Key 保存、重启读取、删除、锁屏权限失败；重签名版本的钥匙串 entitlement。
+- 实际网络预览与请求一致，正常 JSON、空响应、格式错误、401/402/429、断网、超时、取消/关闭、重新请求。
+- 候选回复只复制，不产生任何微信发送动作；至少 3 条最多 5 条。
+- A/B 联系人以及两个微信账号的记忆隔离，关闭记忆后的请求不包含记忆，清除后旧分析不能写回。
+- 设备锁定时的文件保护、记忆保存失败提示、文件损坏及超大文件处理。
