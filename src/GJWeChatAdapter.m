@@ -87,7 +87,7 @@ static NSArray<NSString *> *GJMessageFields(id object) {
         else if ([vc isKindOfClass:UINavigationController.class]) next = ((UINavigationController *)vc).visibleViewController;
         else if ([vc isKindOfClass:UITabBarController.class]) next = ((UITabBarController *)vc).selectedViewController;
         else {
-            for (UIViewController *child in vc.children.reverseObjectEnumerator) {
+            for (UIViewController *child in vc.childViewControllers.reverseObjectEnumerator) {
                 if (child.isViewLoaded && child.view.window == window && !child.view.hidden) { next = child; break; }
             }
         }
