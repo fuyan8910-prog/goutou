@@ -1,6 +1,6 @@
 # 狗头军师 / GoutouJunshi
 
-面向微信 iOS 8.0.75 的手动沟通分析插件。当前代码是第一版实现，**新版尚未经过 Theos 编译及真机验收，私有消息列表适配仍待验证**。原仓库的注入、构建成功记录来自已有基线，不代表本次新增功能已经真机验证。
+面向微信 iOS 8.0.75 的手动沟通分析插件。当前代码是第一版实现，**新版已通过 GitHub Actions/Theos 编译、链接、签名和 deb 打包；私有消息列表适配及新增功能仍待真机验收**。成功构建的代码提交为 `979bc43`：[Actions 构建 #12](https://github.com/fuyan8910-prog/goutou/actions/runs/36347778998)。
 
 ## 使用
 
@@ -52,7 +52,7 @@
 
 `Makefile` 明确列出 10 个 `.m/.xm` 编译单元，保持 `arm64`、`iphone:clang:latest:15.0`、ARC 和安装进程；增加 Security、QuartzCore，保留 UIKit、Foundation。`control`、`GoutouJunshi.plist`、`.github/workflows/build.yml` 未改动。
 
-现有 Actions 继续在 macOS 安装 Theos 后执行 `make clean`、`make package FINALPACKAGE=1` 并上传 `packages/*.deb`。本次没有提交、push 或触发远程构建。Windows 当前环境无 Theos/Clang/iOS SDK，无法在本机验证链接、打包或真实 SDK 警告。
+现有 Actions 继续在 macOS 安装 Theos 后执行 `make clean`、`make package FINALPACKAGE=1` 并上传 `packages/*.deb`。完整工程已上传 main 并完成远程构建，产物为 `com.fuyan.goutoujunshi_0.1.0_iphoneos-arm64.deb`。Windows 当前环境无 Theos/Clang/iOS SDK，实际编译验证由现有 Actions 完成。首轮发现并修复了 Objective-C 子控制器属性名，应使用 `childViewControllers`。
 
 可运行 `python scripts/check_source.py` 检查源文件列表、依赖和禁止的跨模块访问。安装 `tree-sitter`、`tree-sitter-objc` 后还会解析 Objective-C 语法；`%ctor` 仅在内存中替换为普通构造函数以检查主体。**语法解析不等于 Clang/Logos 编译，不验证 SDK、ABI 或真实微信行为。**
 
