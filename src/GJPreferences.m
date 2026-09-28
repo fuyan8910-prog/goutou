@@ -10,7 +10,7 @@
     });
     return value;
 }
-+ (NSInteger)messageCount { return MAX(5, MIN(50, [[self defaults] integerForKey:@"messageCount"])); }
++ (NSInteger)messageCount { return MAX(5, MIN(GJMaximumMessageCount, [[self defaults] integerForKey:@"messageCount"])); }
 + (BOOL)memoryEnabled { return [[self defaults] boolForKey:@"memoryEnabled"]; }
 + (NSString *)model { return [[self defaults] stringForKey:@"model"] ?: @"deepseek-chat"; }
 + (NSMutableDictionary *)keyQuery {

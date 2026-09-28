@@ -202,8 +202,12 @@ static NSString *GJRelevantStructure(id object) {
         if (!display.length) display = GJString(GJField(contact, @"m_nsNickName"));
         GJChatContext *context = [GJChatContext new];
         context.accountID = selfID; context.contactID = username; context.displayName = display.length ? display : username;
+        context.isGroup = [username hasSuffix:@"@chatroom"];
+        NSString *nickname = GJString(GJField(contact, @"m_nsNickName"));
+        NSString *alias = GJString(GJField(contact, @"m_nsAlias"));
+        context.identityNote = [NSString stringWithFormat:@"昵称：%@\n微信号：%@\n会话内部标识：%@\n以上身份信息仅在本机显示；AI 中使用匿名称呼。", nickname.length ? nickname : @"未读取到", context.isGroup ? @"群聊不适用" : (alias.length ? alias : @"未读取到（内部标识不等于微信号）"), username];
         context.messages = @[];
-        context.sourceNote = @"仅当前页面已加载且校验属于该会话的消息，不保证是数据库中最新或完整记录。单条最多约 1000 字，总计最多约 12000 字。";
+        context.sourceNote = @"仅当前页面已加载且校验属于该会话的消息，不保证是数据库中最新或完整记录。需更多历史时，请关闭插件、向上翻页加载，再重新打开。单条最多约 2000 字，总计最多约 60000 字。";
         NSMutableArray<GJMessage *> *messages = [NSMutableArray array];
         NSMutableSet *seen = [NSMutableSet set];
         // Only inspect a bounded tail of the active controller's loaded message list.
@@ -212,7 +216,7 @@ static NSString *GJRelevantStructure(id object) {
             id value = GJField(chat, key);
             if (![value isKindOfClass:NSArray.class]) continue;
             NSArray *array = value;
-            NSUInteger start = array.count > 200 ? array.count - 200 : 0;
+            NSUInteger start = array.count > 2000 ? array.count - 2000 : 0;
             for (NSUInteger index = start; index < array.count; index++) {
                 id wrap = GJMessageWrap(array[index]);
                 NSString *from = GJString(GJField(wrap, @"m_nsFromUsr"));
@@ -247,7 +251,7 @@ static NSString *GJRelevantStructure(id object) {
                 GJMessage *message = [GJMessage new];
                 message.sender = from; message.receiver = to; message.isFromMe = outgoing;
                 message.type = type.integerValue; message.timestamp = time.doubleValue;
-                message.text = GJClip(body, 1000);
+                message.text = body.length > GJMessageTextLimit ? [GJClip(body, GJMessageTextLimit - 7) stringByAppendingString:@"[本条已截断]"] : body;
                 [messages addObject:message]; [seen addObject:identity];
             }
             if (messages.count) break;
@@ -256,14 +260,20 @@ static NSString *GJRelevantStructure(id object) {
         [messages sortWithOptions:NSSortStable usingComparator:^NSComparisonResult(GJMessage *a, GJMessage *b) {
             return [@(a.timestamp) compare:@(b.timestamp)];
         }];
-        NSUInteger count = MIN(MAX((NSUInteger)5, limit), (NSUInteger)50);
+        NSUInteger available = messages.count;
+        NSUInteger count = MIN(MAX((NSUInteger)5, limit), (NSUInteger)GJMaximumMessageCount);
         if (messages.count > count) [messages removeObjectsInRange:NSMakeRange(0, messages.count - count)];
         // Also cap total text budget, prioritizing the newest loaded records.
-        while (messages.count > 1) {
-            NSUInteger total = 0; for (GJMessage *message in messages) total += message.text.length;
-            if (total <= 12000) break;
+        NSUInteger total = 0; for (GJMessage *message in messages) total += message.text.length;
+        while (messages.count > 1 && total > GJChatTextBudget) {
+            total -= messages.firstObject.text.length;
             [messages removeObjectAtIndex:0];
         }
+        NSDateFormatter *formatter = [NSDateFormatter new];
+        formatter.dateFormat = @"yyyy-MM-dd HH:mm";
+        NSString *first = [formatter stringFromDate:[NSDate dateWithTimeIntervalSince1970:messages.firstObject.timestamp]];
+        NSString *last = [formatter stringFromDate:[NSDate dateWithTimeIntervalSince1970:messages.lastObject.timestamp]];
+        context.sourceNote = [context.sourceNote stringByAppendingFormat:@"\n本次设置 %lu 条，扫描窗口内可用 %lu 条，实际选取 %lu 条，文本约 %lu 字。时间范围：%@ 至 %@（设备时区）。扫描窗口最多 2000 个已加载节点；不足设置数量可能是加载范围或文本预算所限。", (unsigned long)count, (unsigned long)available, (unsigned long)messages.count, (unsigned long)total, first, last];
         context.messages = messages;
         return context;
     } @catch (__unused NSException *exception) {

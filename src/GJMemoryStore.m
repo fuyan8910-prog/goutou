@@ -25,15 +25,15 @@
     if (![NSFileManager.defaultManager fileExistsAtPath:file.path]) return @{};
     NSDictionary *attributes = [NSFileManager.defaultManager attributesOfItemAtPath:file.path error:error];
     if (!attributes) return nil;
-    if ([attributes[NSFileSize] unsignedLongLongValue] > 32768) { if (error) *error = GJError(@"记忆文件过大，请清除后重试。"); return nil; }
+    if ([attributes[NSFileSize] unsignedLongLongValue] > 262144) { if (error) *error = GJError(@"记忆文件过大，请清除后重试。"); return nil; }
     NSData *data = [NSData dataWithContentsOfURL:file options:0 error:error];
     if (!data) return nil;
-    if (data.length > 32768) { if (error) *error = GJError(@"记忆文件异常，请清除后重试。"); return nil; }
+    if (data.length > 262144) { if (error) *error = GJError(@"记忆文件异常，请清除后重试。"); return nil; }
     id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:error];
     if (![object isKindOfClass:NSDictionary.class]) { if (error) *error = GJError(@"记忆格式异常。"); return nil; }
     NSMutableDictionary *clean = [NSMutableDictionary dictionary];
     for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary"]) {
-        clean[key] = GJClip(object[key], 1000);
+        clean[key] = GJClip(object[key], GJMemoryFieldLimit);
     }
     return clean;
 }
@@ -45,7 +45,7 @@
                                                attributes:@{NSFileProtectionKey:NSFileProtectionComplete} error:error]) return NO;
     if (![dir setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:error]) return NO;
     NSMutableDictionary *clean = [NSMutableDictionary dictionary];
-    for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary"]) clean[key] = GJClip(memory[key], 1000);
+    for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary"]) clean[key] = GJClip(memory[key], GJMemoryFieldLimit);
     NSData *data = [NSJSONSerialization dataWithJSONObject:clean options:0 error:error];
     BOOL saved = data && [data writeToURL:file options:NSDataWritingAtomic | NSDataWritingFileProtectionComplete error:error];
     if (saved) [self invalidatePendingWrites];

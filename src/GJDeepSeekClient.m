@@ -14,14 +14,14 @@
     if (!key.length || !model.length || !messages.count) { completion(nil, GJError(@"Key、模型或分析上下文缺失。")); return; }
     NSError *error = nil;
     NSData *body = [NSJSONSerialization dataWithJSONObject:@{@"model":model, @"messages":messages,
-        @"stream":@NO, @"max_tokens":@3000, @"response_format":@{@"type":@"json_object"}} options:0 error:&error];
+        @"stream":@NO, @"max_tokens":@8000, @"response_format":@{@"type":@"json_object"}} options:0 error:&error];
     if (!body) { completion(nil, GJError(@"无法生成请求。")); return; }
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"https://api.deepseek.com/chat/completions"]];
     request.HTTPMethod = @"POST"; request.HTTPBody = body;
     [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
     [request setValue:[@"Bearer " stringByAppendingString:key] forHTTPHeaderField:@"Authorization"];
     NSURLSessionConfiguration *configuration = NSURLSessionConfiguration.ephemeralSessionConfiguration;
-    configuration.timeoutIntervalForRequest = 60; configuration.timeoutIntervalForResource = 90;
+    configuration.timeoutIntervalForRequest = 180; configuration.timeoutIntervalForResource = 240;
     configuration.URLCache = nil; configuration.HTTPCookieStorage = nil;
     configuration.requestCachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
     self.completion = completion; self.received = [NSMutableData data]; self.responseError = nil;
@@ -40,7 +40,7 @@
     if (session != self.session) { completionHandler(NSURLSessionResponseCancel); return; }
     NSInteger status = [response isKindOfClass:NSHTTPURLResponse.class] ? ((NSHTTPURLResponse *)response).statusCode : 0;
     if (status != 200) {
-        NSString *hint = status == 401 ? @"API Key 无效" : status == 402 ? @"账户余额不足" : status == 429 ? @"请求过于频繁，请稍后重试" : @"服务请求失败，请检查模型名称或稍后重试";
+        NSString *hint = status == 400 ? @"请求参数或上下文超限，请减少聊天条数、精简记忆并检查模型名称" : status == 401 ? @"API Key 无效" : status == 402 ? @"账户余额不足" : status == 429 ? @"请求过于频繁，请稍后重试" : @"服务请求失败，请检查模型名称或稍后重试";
         self.responseError = GJError([NSString stringWithFormat:@"%@（HTTP %ld）", hint, (long)status]);
         completionHandler(NSURLSessionResponseCancel); return;
     }

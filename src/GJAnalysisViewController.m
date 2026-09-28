@@ -53,7 +53,7 @@
     if (self.context && self.includedMemory && !error) self.memory = [GJMemoryStore.shared memoryForContext:self.context error:&error];
     if (self.context && !error) {
         self.payload = [GJPromptBuilder messagesForContext:self.context memory:self.memory];
-        self.status = [NSString stringWithFormat:@"%@\n已读取 %lu 条。%@\n长期记忆：%@。内容尚未发送。", self.context.displayName, (unsigned long)self.context.messages.count, self.context.sourceNote, self.includedMemory ? @"开启" : @"关闭"];
+        self.status = [NSString stringWithFormat:@"%@\n%@\n已读取 %lu 条。%@\n长期记忆：%@。内容尚未发送。", self.context.displayName, self.context.identityNote ?: @"", (unsigned long)self.context.messages.count, self.context.sourceNote, self.includedMemory ? @"开启" : @"关闭"];
     } else self.status = error.localizedDescription ?: @"无法读取聊天。";
     [self.tableView reloadData];
 }
@@ -65,7 +65,7 @@
     return 2;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    return @[@"当前上下文与请求状态", @"AI 分析（推测不代表事实）", @"候选回复 · 点击仅复制", @"本次精简摘要"][section];
+    return @[@"当前上下文与请求状态", @"AI 分析（推测不代表事实）", @"候选回复 · 点击仅复制", @"更新后的累计摘要"][section];
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     return section == 0 ? @"只在点击并确认分析后，将预览中的聊天与精简记忆发送到 DeepSeek。不会自动发送微信消息。预览内容可能包含敏感信息，请自行确认。" : nil;
@@ -84,7 +84,7 @@
         NSDictionary *reply = self.result[@"replies"][row]; cell.textLabel.text = reply[@"style"]; cell.detailTextLabel.text = reply[@"text"];
         cell.textLabel.textColor = UIColor.systemBlueColor;
     } else {
-        cell.textLabel.text = row == 0 ? self.result[@"memory_summary"] : @"将此摘要保存到当前联系人记忆";
+        cell.textLabel.text = row == 0 ? self.result[@"memory_summary"] : @"确认用此累计摘要更新联系人记忆";
         if (row == 1) cell.textLabel.textColor = UIColor.systemBlueColor;
     }
     return cell;
@@ -137,8 +137,8 @@
     NSError *error = nil;
     NSMutableDictionary *memory = [[GJMemoryStore.shared memoryForContext:self.context error:&error] mutableCopy];
     if (!memory) { GJNotice(self, error.localizedDescription); return; }
-    memory[@"summary"] = GJClip(self.result[@"memory_summary"], 1000);
+    memory[@"summary"] = self.result[@"memory_summary"];
     BOOL ok = [GJMemoryStore.shared saveMemory:memory context:self.context error:&error];
-    GJNotice(self, ok ? @"摘要已保存；AI 推测需自行核实。" : error.localizedDescription);
+    GJNotice(self, ok ? @"累计摘要已保存，下次分析会携带；其他四项记忆保持不变，AI 推测需自行核实。" : error.localizedDescription);
 }
 @end
