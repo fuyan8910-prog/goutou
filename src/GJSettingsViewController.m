@@ -48,7 +48,7 @@
     if ((self = [super initWithStyle:UITableViewStyleInsetGrouped])) _context = context;
     return self;
 }
-- (void)viewDidLoad { [super viewDidLoad]; self.title = @"狗头军师设置"; self.tableView.rowHeight = UITableViewAutomaticDimension; self.tableView.estimatedRowHeight = 64; }
+- (void)viewDidLoad { [super viewDidLoad]; self.title = @"军师设置"; self.tableView.rowHeight = UITableViewAutomaticDimension; self.tableView.estimatedRowHeight = 64; }
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 3; }
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return section == 0 ? 3 : section == 1 ? 3 : 5; }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return @[@"DeepSeek 与上下文", @"本地记忆", @"当前联系人记忆（每项最多 4000 字）"][section]; }

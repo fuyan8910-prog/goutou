@@ -12,11 +12,11 @@
 - (void)start {
     if (self.timer) return;
     self.button = [UIButton buttonWithType:UIButtonTypeSystem];
-    [self.button setTitle:@"狗头军师" forState:UIControlStateNormal];
+    [self.button setTitle:@"军师" forState:UIControlStateNormal];
     self.button.backgroundColor = UIColor.secondarySystemBackgroundColor;
     self.button.layer.cornerRadius = 20; self.button.layer.borderWidth = 1;
     self.button.layer.borderColor = UIColor.systemGrayColor.CGColor;
-    self.button.accessibilityLabel = @"打开狗头军师，手动分析当前聊天";
+    self.button.accessibilityLabel = @"打开军师，手动分析当前聊天";
     [self.button addTarget:self action:@selector(open) forControlEvents:UIControlEventTouchUpInside];
     [self.button addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(drag:)]];
     __weak typeof(self) weakSelf = self;

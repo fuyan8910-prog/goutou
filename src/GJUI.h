@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 static inline void GJNotice(UIViewController *vc, NSString *text) {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"狗头军师" message:text preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"军师" message:text preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
     [vc presentViewController:alert animated:YES completion:nil];
 }

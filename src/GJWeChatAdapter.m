@@ -197,15 +197,12 @@ static NSString *GJRelevantStructure(id object) {
             if (username.length) { chat = candidate; break; }
         }
         if (!chat || !username.length) { if (error) *error = GJError(@"[联系人识别] 当前页面未能唯一确认聊天对象。请提供本机适配诊断 v2；仅通过消息推导时至少需要两条可识别且属于同一会话的记录。"); return nil; }
-        id contact = GJCall(contactMgr, @"getContact:", username, YES);
-        NSString *display = GJString(GJField(contact, @"m_nsRemark"));
-        if (!display.length) display = GJString(GJField(contact, @"m_nsNickName"));
         GJChatContext *context = [GJChatContext new];
-        context.accountID = selfID; context.contactID = username; context.displayName = display.length ? display : username;
+        // Keep the existing account/contact keys: display names are not identity.
+        context.accountID = selfID; context.contactID = username;
         context.isGroup = [username hasSuffix:@"@chatroom"];
-        NSString *nickname = GJString(GJField(contact, @"m_nsNickName"));
-        NSString *alias = GJString(GJField(contact, @"m_nsAlias"));
-        context.identityNote = [NSString stringWithFormat:@"昵称：%@\n微信号：%@\n会话内部标识：%@\n以上身份信息仅在本机显示；AI 中使用匿名称呼。", nickname.length ? nickname : @"未读取到", context.isGroup ? @"群聊不适用" : (alias.length ? alias : @"未读取到（内部标识不等于微信号）"), username];
+        context.displayName = context.isGroup ? @"当前群聊" : @"当前聊天对象";
+        context.identityNote = @"已确认当前会话；本地记忆按微信账号和会话内部标识分别保存，不读取或显示微信号、昵称、备注。";
         context.messages = @[];
         context.sourceNote = @"仅当前页面已加载且校验属于该会话的消息，不保证是数据库中最新或完整记录。需更多历史时，请关闭插件、向上翻页加载，再重新打开。单条最多约 2000 字，总计最多约 60000 字。";
         NSMutableArray<GJMessage *> *messages = [NSMutableArray array];
