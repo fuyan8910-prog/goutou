@@ -7,14 +7,16 @@
 @property(nonatomic, strong) NSMutableData *received;
 @property(nonatomic, copy) void (^completion)(NSDictionary *, NSError *);
 @property(nonatomic, strong) NSError *responseError;
+@property(nonatomic) BOOL updatesMemory;
 @end
 @implementation GJDeepSeekClient
-- (void)analyzeMessages:(NSArray<NSDictionary *> *)messages APIKey:(NSString *)key model:(NSString *)model completion:(void (^)(NSDictionary *, NSError *))completion {
+- (void)analyzeMessages:(NSArray<NSDictionary *> *)messages APIKey:(NSString *)key model:(NSString *)model updatesMemory:(BOOL)updatesMemory completion:(void (^)(NSDictionary *, NSError *))completion {
     [self cancel];
+    self.updatesMemory = updatesMemory;
     if (!key.length || !model.length || !messages.count) { completion(nil, GJError(@"Key、模型或分析上下文缺失。")); return; }
     NSError *error = nil;
     NSData *body = [NSJSONSerialization dataWithJSONObject:@{@"model":model, @"messages":messages,
-        @"stream":@NO, @"max_tokens":@8000, @"response_format":@{@"type":@"json_object"}} options:0 error:&error];
+        @"stream":@NO, @"max_tokens":@(updatesMemory ? 8000 : 1800), @"response_format":@{@"type":@"json_object"}} options:0 error:&error];
     if (!body) { completion(nil, GJError(@"无法生成请求。")); return; }
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"https://api.deepseek.com/chat/completions"]];
     request.HTTPMethod = @"POST"; request.HTTPBody = body;
@@ -66,7 +68,7 @@
         if (![content isKindOfClass:NSString.class] || ![choice[@"finish_reason"] isEqual:@"stop"]) error = GJError(@"AI 返回为空、被截断或格式异常，请重试。");
         else {
             id object = [NSJSONSerialization JSONObjectWithData:[content dataUsingEncoding:NSUTF8StringEncoding] options:0 error:NULL];
-            result = [GJPromptBuilder validatedAnalysis:object error:&error];
+            result = [GJPromptBuilder validatedAnalysis:object updatesMemory:self.updatesMemory error:&error];
         }
     }
     void (^callback)(NSDictionary *, NSError *) = self.completion;
