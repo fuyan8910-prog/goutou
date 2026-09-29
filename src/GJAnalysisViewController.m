@@ -60,7 +60,7 @@
         self.status = [NSString stringWithFormat:@"%@\n%@\n已读取 %lu 条。%@\n长期记忆：%@。内容尚未发送。", self.context.displayName, self.context.identityNote ?: @"", (unsigned long)self.context.messages.count, self.context.sourceNote, self.includedMemory ? @"开启" : @"关闭"];
     } else self.status = error.localizedDescription ?: @"无法读取聊天。";
     if (self.payload) {
-        if (self.mode == 0) self.status = [self.status stringByAppendingString:@"\n省量模式完整携带累计摘要和明确记住的信息；关系、人物、事件分别最多600/600/800字，完整记忆仍保留本机。先查看发送预览。"];
+        if (self.mode == 0) self.status = [self.status stringByAppendingString:@"\n省量模式完整携带累计摘要、明确记住的信息和手动语气样例；关系、人物、事件分别最多600/600/800字，完整记忆仍保留本机。先查看发送预览。"];
         BOOL hasMemory = NO;
         for (NSString *value in self.memory.allValues) if (value.length) { hasMemory = YES; break; }
         self.status = [self.status stringByAppendingFormat:@"\n模式：%@。%@", [self modeName], hasMemory ? @"已载入此联系人保存的记忆，无需重读500条。" : @"本次没有载入已保存的记忆；请检查记忆开关，旧版分析需曾手动保存。"];
@@ -186,6 +186,6 @@
     if (!memory) { GJNotice(self, error.localizedDescription); return; }
     memory[@"summary"] = self.result[@"memory_summary"];
     BOOL ok = [GJMemoryStore.shared saveMemory:memory context:self.context error:&error];
-    GJNotice(self, ok ? @"累计摘要已保存，下次分析会携带；其他四项记忆保持不变，AI 推测需自行核实。" : error.localizedDescription);
+    GJNotice(self, ok ? @"累计摘要已保存，下次分析会携带；其他手动记忆及语气样例保持不变，AI 推测需自行核实。" : error.localizedDescription);
 }
 @end

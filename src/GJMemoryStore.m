@@ -32,7 +32,7 @@
     id object = [NSJSONSerialization JSONObjectWithData:data options:0 error:error];
     if (![object isKindOfClass:NSDictionary.class]) { if (error) *error = GJError(@"记忆格式异常。"); return nil; }
     NSMutableDictionary *clean = [NSMutableDictionary dictionary];
-    for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary"]) {
+    for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary", @"voice"]) {
         clean[key] = GJClip(object[key], GJMemoryFieldLimit);
     }
     return clean;
@@ -45,7 +45,7 @@
                                                attributes:@{NSFileProtectionKey:NSFileProtectionComplete} error:error]) return NO;
     if (![dir setResourceValue:@YES forKey:NSURLIsExcludedFromBackupKey error:error]) return NO;
     NSMutableDictionary *clean = [NSMutableDictionary dictionary];
-    for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary"]) clean[key] = GJClip(memory[key], GJMemoryFieldLimit);
+    for (NSString *key in @[@"relationship", @"people", @"events", @"explicit", @"summary", @"voice"]) clean[key] = GJClip(memory[key], GJMemoryFieldLimit);
     NSData *data = [NSJSONSerialization dataWithJSONObject:clean options:0 error:error];
     BOOL saved = data && [data writeToURL:file options:NSDataWritingAtomic | NSDataWritingFileProtectionComplete error:error];
     if (saved) [self invalidatePendingWrites];
